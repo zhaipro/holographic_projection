@@ -1,3 +1,4 @@
+// https://github.com/FFmpeg/FFmpeg/blob/master/libavfilter/vf_chromakey.c
 #define CUDA_KERNEL_LOOP_x(i,n) \
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; \
         i < (n); \
@@ -11,10 +12,11 @@
 #define FIXNUM(x) lrint((x) * (1 << 10))
 #define RGB_TO_U(rgb) (((- FIXNUM(0.16874) * rgb[0] - FIXNUM(0.33126) * rgb[1] + FIXNUM(0.50000) * rgb[2] + (1 << 9) - 1) >> 10) + 128)
 #define RGB_TO_V(rgb) (((  FIXNUM(0.50000) * rgb[0] - FIXNUM(0.41869) * rgb[1] - FIXNUM(0.08131) * rgb[2] + (1 << 9) - 1) >> 10) + 128)
+#define BGR_TO_U(bgr) (((- FIXNUM(0.16874) * bgr[2] - FIXNUM(0.33126) * bgr[1] + FIXNUM(0.50000) * bgr[0] + (1 << 9) - 1) >> 10) + 128)
+#define BGR_TO_V(bgr) (((  FIXNUM(0.50000) * bgr[2] - FIXNUM(0.41869) * bgr[1] - FIXNUM(0.08131) * bgr[0] + (1 << 9) - 1) >> 10) + 128)
 #define av_clipd(v, v_min, v_max) (max(min(v, v_max), v_min))
 
 
-// ---------------------------------------
 __device__  float do_chromakey_pixel_diff(
     float similarity, float blend,
     float * diff_list)
@@ -22,54 +24,48 @@ __device__  float do_chromakey_pixel_diff(
     float diff = 0.0;
     int i;
 
-    diff = 10000.0;
-    for (i = 0; i < 9; i++) {
-        if (diff_list[i] < diff)
-        {
-            diff = diff_list[i];
-        }
+    for (i = 0; i < 9; ++i) {
+        diff += diff_list[i];
     }
 
-    float rst;
+    diff /= 9.0;
+
     if (blend > 0.0001) {
-        rst = av_clipd((diff - similarity) / blend, 0.0, 1.0);
+        return av_clipd((diff - similarity) / blend, 0.0, 1.0);
+    } else {
+        return (diff > similarity) ? 1.0 : 0.0;
     }
-    else {
-        rst = (diff > similarity) ? 1 : 0;
-    }
-
-    return rst;
 }
 
 // ---------------------------------------
 __global__ void rendering_kernel(const int h, const int w,
-        const unsigned char * chromakey_rgb, const float * similarity_blend,
-        const unsigned char * img_in,
-        float * img_in_diff,
-        unsigned char * img_out)
+        const unsigned char * chromakey_bgr, const float * similarity_blend,
+        unsigned char * img,
+        float * img_diff)
 {
     const unsigned char * p_tmp;
-    float uu, vv, du, dv, diff;
+    int u, v, du, dv;
+    float diff;
 
     // ---------------------------------------------------------
     unsigned char chromakey_uv[2];
-    chromakey_uv[0] = RGB_TO_U(chromakey_rgb);
-    chromakey_uv[1] = RGB_TO_V(chromakey_rgb);
+    chromakey_uv[0] = BGR_TO_U(chromakey_bgr);
+    chromakey_uv[1] = BGR_TO_V(chromakey_bgr);
 
     // ---------------------------------------------------------
     // rgb2uv
     CUDA_KERNEL_LOOP_y(jj, h){
         CUDA_KERNEL_LOOP_x(ii, w){
             int idx_base = jj * w + ii;
-            p_tmp = img_in + idx_base * 3;
-            uu = RGB_TO_U(p_tmp);
-            vv = RGB_TO_V(p_tmp);
+            p_tmp = img + idx_base * 3;
+            u = BGR_TO_U(p_tmp);
+            v = BGR_TO_V(p_tmp);
 
             // diff
-            du = (float)uu - chromakey_uv[0];
-            dv = (float)vv - chromakey_uv[1];
-            diff = sqrt((du * du + dv * dv) / (255.0 * 255.0));
-            img_in_diff[idx_base] = diff;
+            du = u - chromakey_uv[0];
+            dv = v - chromakey_uv[1];
+            diff = sqrt((du * du + dv * dv) / (255.0 * 255.0 * 2));
+            img_diff[idx_base] = diff;
         }
     }
     __syncthreads();
@@ -79,6 +75,8 @@ __global__ void rendering_kernel(const int h, const int w,
     int x, y;
 
     float diff_list[9];
+    const float similarity = similarity_blend[0];
+    const float blend = similarity_blend[1];
 
     CUDA_KERNEL_LOOP_y(jj, h){
         CUDA_KERNEL_LOOP_x(ii, w){
@@ -92,17 +90,14 @@ __global__ void rendering_kernel(const int h, const int w,
                         continue;
 
                     int idx_base_tmp = w * y + x;
-                    diff_list[yo * 3 + xo] = img_in_diff[idx_base_tmp];
+                    diff_list[yo * 3 + xo] = img_diff[idx_base_tmp];
                 }
             }
 
-            float similarity = similarity_blend[0];
-            float blend = similarity_blend[1];
             float alpha = do_chromakey_pixel_diff(similarity, blend, diff_list);
-
-            img_out[idx_base * 3 + 0] = img_in[idx_base * 3 + 0] * alpha;
-            img_out[idx_base * 3 + 1] = img_in[idx_base * 3 + 1] * alpha;
-            img_out[idx_base * 3 + 2] = img_in[idx_base * 3 + 2] * alpha;
+            img[idx_base * 3 + 0] = img[idx_base * 3 + 0] * alpha;
+            img[idx_base * 3 + 1] = img[idx_base * 3 + 1] * alpha;
+            img[idx_base * 3 + 2] = img[idx_base * 3 + 2] * alpha;
         }
     }
 }
