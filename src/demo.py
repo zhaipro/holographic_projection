@@ -9,10 +9,11 @@ import draw3d
 import green
 
 
-def show(iframe, pad=100):
-    oframe = np.zeros((2 * 1080 + pad, 2 * 1080 + pad, 3), dtype='uint8')
-    draw3d.draw3d(oframe, iframe, iframe, iframe, iframe)
-    oframe = cv2.resize(oframe, (512, 512))
+def show(iframe):
+    iframe = cv2.resize(iframe, None, fx=0.5, fy=0.5)
+    oframe = np.zeros((1080, 1920, 3), dtype='uint8')
+    draw3d.draw3d(oframe[:, 420:-420], iframe, iframe, iframe, iframe)
+    oframe = cv2.resize(oframe, None, fx=0.5, fy=0.5)
     cv2.imshow('a', oframe)
     cv2.waitKey()
     cv2.imwrite('result.jpg', oframe)

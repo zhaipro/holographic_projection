@@ -19,10 +19,10 @@ static void draw(const PyArrayObject *oframe, const PyArrayObject *iframe)
     int64_t ow = oframe->dimensions[1], oh = oframe->dimensions[0];
 
     int64_t x_pad = (ow - iw) / 2;
-    int64_t y_pad = oh - ih;
+    int64_t y_pad = oh / 2 - ih;
 
-    uint8_t *data = oframe->data + oframe->strides[0] * y_pad;
     int64_t os0 = oframe->strides[0], os1 = oframe->strides[1];
+    uint8_t *data = oframe->data + oh / 2 * os0 + os0 * y_pad;
     for(int y=0; y<ih; y++)
     {
         int64_t i_pad = max(iw / 2 - y_pad - y, 0);
@@ -37,42 +37,36 @@ static void draw(const PyArrayObject *oframe, const PyArrayObject *iframe)
     }
 }
 
+static void rot90(PyArrayObject *m)
+{
+    int64_t h = m->dimensions[0], w = m->dimensions[1];
+    int64_t s0 = m->strides[0], s1 = m->strides[1];
+    m->dimensions[0] = w;
+    m->dimensions[1] = h;
+    m->data += s1 * (w - 1);
+    m->strides[0] = -s1;
+    m->strides[1] = s0;
+}
+
 // https://python3-cookbook.readthedocs.io/zh_CN/latest/chapters/p15_c_extensions.html
 static PyObject* py_draw3d(PyObject *self, PyObject *args)
 {
     PyArrayObject *oframe, *w, *s, *a, *d;
     if (!PyArg_ParseTuple(args, "OOOOO", &oframe, &w, &s, &a, &d))
         return NULL;
-    // 备份
-    int64_t ow = oframe->dimensions[1], oh = oframe->dimensions[0];
-    uint8_t *odata = oframe->data;
-    int64_t os0 = oframe->strides[0], os1 = oframe->strides[1];
     // 下
-    oframe->data = odata + oh / 2 * os0;
-    oframe->dimensions[0] = oh / 2;
     draw(oframe, w);
-    // 上
-    oframe->data = odata + oh / 2 * os0 - 3;
-    oframe->strides[0] = -os0;
-    oframe->strides[1] = -os1;
-    draw(oframe, s);
     // 左
-    oframe->dimensions[1] = oh;
-    oframe->data = odata + os0 / 2 - 3;
-    oframe->strides[0] = -os1;
-    oframe->strides[1] = os0;
+    rot90(oframe);
     draw(oframe, a);
+    // 上
+    rot90(oframe);
+    draw(oframe, s);
     // 右
-    oframe->data = odata + os0 * oh - os0 / 2;
-    oframe->strides[0] = os1;
-    oframe->strides[1] = -os0;
+    rot90(oframe);
     draw(oframe, d);
     // 复原
-    oframe->data = odata;
-    oframe->dimensions[0] = oh;
-    oframe->dimensions[1] = ow;
-    oframe->strides[0] = os0;
-    oframe->strides[1] = os1;
+    rot90(oframe);
     Py_RETURN_NONE;
 }
 
