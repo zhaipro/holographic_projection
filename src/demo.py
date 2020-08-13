@@ -32,15 +32,17 @@ def test(iframe, n, pad=100):
     cv2.imwrite('oframe.jpg', oframe)
 
 
-def demo(pad=0):
+def demo():
     w = cv2.imread('w.jpg')
     s = cv2.imread('s.jpg')
     a = cv2.imread('a.jpg')
     d = cv2.imread('d.jpg')
-    oframe = np.zeros((1000 + pad, 1400 + pad, 3), dtype='uint8')
-    draw3d.draw3d(oframe, w, s, a, d)
-    oframe = cv2.resize(oframe, None, fx=0.5, fy=0.5)
+    oframe = np.zeros((720, 1280, 3), dtype='uint8')
+    draw3d.draw3d(oframe[:, 280:-280], w, s, a, d)
     cv2.imwrite('result.jpg', oframe)
+    oframe = cv2.resize(oframe, None, fx=0.8, fy=0.8)
+    cv2.imshow('a', oframe)
+    cv2.waitKey()
 
 
 def fopen(fn):
@@ -98,5 +100,5 @@ if __name__ == '__main__':
     elif len(sys.argv) > 1:
         show(iframe)
     else:
-        xixi()
-        # demo()
+        # xixi()
+        demo()
