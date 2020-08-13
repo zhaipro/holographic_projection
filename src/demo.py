@@ -38,7 +38,7 @@ def demo():
     a = cv2.imread('a.jpg')
     d = cv2.imread('d.jpg')
     oframe = np.zeros((720, 1280, 3), dtype='uint8')
-    draw3d.draw3d(oframe[:, 280:-280], w, s, a, d)
+    draw3d.draw3d(oframe[:, ], w, s[::-1], np.rot90(a), np.rot90(d, -1))
     cv2.imwrite('result.jpg', oframe)
     oframe = cv2.resize(oframe, None, fx=0.8, fy=0.8)
     cv2.imshow('a', oframe)

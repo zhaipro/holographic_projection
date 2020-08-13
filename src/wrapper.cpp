@@ -21,6 +21,7 @@ static void draw(const PyArrayObject *oframe, const PyArrayObject *iframe)
     int64_t x_pad = (ow - iw) / 2;
     int64_t y_pad = oh / 2 - ih;
 
+    int64_t is0 = iframe->strides[0], is1 = iframe->strides[1];
     int64_t os0 = oframe->strides[0], os1 = oframe->strides[1];
     uint8_t *data = oframe->data + os0 * (oh - ih);
 
@@ -31,9 +32,9 @@ static void draw(const PyArrayObject *oframe, const PyArrayObject *iframe)
         int64_t n = iw - 2 * i_pad;
         for(int x=0; x<n; x++)
         {
-            data[y * os0 + (x + o_pad) * os1 + 0] = iframe->data[3 * (y * iw + x + i_pad) + 0];
-            data[y * os0 + (x + o_pad) * os1 + 1] = iframe->data[3 * (y * iw + x + i_pad) + 1];
-            data[y * os0 + (x + o_pad) * os1 + 2] = iframe->data[3 * (y * iw + x + i_pad) + 2];
+            data[y * os0 + (x + o_pad) * os1 + 0] = iframe->data[y * is0 + (x + i_pad) * is1 + 0];
+            data[y * os0 + (x + o_pad) * os1 + 1] = iframe->data[y * is0 + (x + i_pad) * is1 + 1];
+            data[y * os0 + (x + o_pad) * os1 + 2] = iframe->data[y * is0 + (x + i_pad) * is1 + 2];
         }
     }
 }
