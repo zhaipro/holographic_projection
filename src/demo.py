@@ -10,13 +10,13 @@ import green
 
 
 def show(iframe):
-    iframe = cv2.resize(iframe, None, fx=0.5, fy=0.5)
+    iframe = cv2.resize(iframe, None, fx=0.45, fy=0.45)
     oframe = np.zeros((1080, 1920, 3), dtype='uint8')
     draw3d.draw3d(oframe[:, 420:-420], iframe, iframe, iframe, iframe)
+    cv2.imwrite('result.jpg', oframe)
     oframe = cv2.resize(oframe, None, fx=0.5, fy=0.5)
     cv2.imshow('a', oframe)
     cv2.waitKey()
-    cv2.imwrite('result.jpg', oframe)
 
 
 def test(iframe, n, pad=100):
@@ -62,29 +62,31 @@ def fopen(fn):
 
 
 def xixi():
-    pad = 400
-    im = cv2.imread('face.jpg')
     greenrendering_mine = green.GreenRenderingCore([68, 138, 81], [0.042, 0.049])
     t1 = fopen('rtsp://admin:Mb123456@172.16.68.193/h264/ch1/main/av_stream')
-    t2 = fopen('rtsp://admin:Mb123456@172.16.68.194/h264/ch1/main/av_stream')
+    t2 = fopen('rtsp://admin:Mb123456@172.16.68.193/h264/ch1/main/av_stream')
+    t3 = fopen('rtsp://admin:Mb123456@172.16.68.194/h264/ch1/main/av_stream')
+    t4 = fopen('rtsp://admin:Mb123456@172.16.68.194/h264/ch1/main/av_stream')
     oframe = np.zeros((1080, 1920, 3), dtype='uint8')
     n = 0
     start = time.time()
     while True:
-        w = cv2.resize(t1.out, None, fx=0.5, fy=0.5)
-        s = cv2.resize(t2.out, None, fx=0.5, fy=0.5)
-        ad = cv2.resize(im, None, fx=0.5, fy=0.5)
-        draw3d.draw3d(oframe, w, s, ad, ad)
+        w = cv2.resize(t1.out, None, fx=0.45, fy=0.45)
+        s = cv2.resize(t2.out, None, fx=0.45, fy=0.45)
+        a = cv2.resize(t3.out, None, fx=0.45, fy=0.45)
+        d = cv2.resize(t4.out, None, fx=0.45, fy=0.45)
+        draw3d.draw3d(oframe[:, 420:-420], w, s, a, d)
         result = greenrendering_mine.process(oframe)
         result = cv2.resize(result, None, fx=0.50, fy=0.50)
         cv2.imshow('a', result)
         if cv2.waitKey(1) == ord(' '):
             break
         n += 1
-    print(t1.out.shape, t2.out.shape)
     print(n / (time.time() - start))
     t1.is_run = False
     t2.is_run = False
+    t3.is_run = False
+    t4.is_run = False
 
 
 if __name__ == '__main__':

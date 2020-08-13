@@ -22,7 +22,8 @@ static void draw(const PyArrayObject *oframe, const PyArrayObject *iframe)
     int64_t y_pad = oh / 2 - ih;
 
     int64_t os0 = oframe->strides[0], os1 = oframe->strides[1];
-    uint8_t *data = oframe->data + oh / 2 * os0 + os0 * y_pad;
+    uint8_t *data = oframe->data + os0 * (oh - ih);
+
     for(int y=0; y<ih; y++)
     {
         int64_t i_pad = max(iw / 2 - y_pad - y, 0);
