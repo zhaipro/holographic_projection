@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <stdio.h>
 
-// https://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html
+// https://docs.scipy.org/doc/numpy/reference/c-api/types-and-structures.html
 typedef struct {
     PyObject_HEAD
     uint8_t *data;
